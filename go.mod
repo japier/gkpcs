@@ -1,4 +1,4 @@
-module github/japier/gkpcs
+module github.com/japier/gkpcs
 
 go 1.16
 
