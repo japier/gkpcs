@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const MagicByte = 0
+
 func msgIndexesToByteArray(indexes []int) []byte {
 	encoded := make([]byte, binary.MaxVarintLen32)
 	result := make([]byte, 0)
@@ -20,6 +22,25 @@ func msgIndexesToByteArray(indexes []int) []byte {
 	}
 
 	return result
+}
+
+func byteArrayToIndexesSize(bytes []byte) (int, error) {
+	count, n := binary.Varint(bytes)
+	var size int
+	if n <= 0 {
+		return 0, fmt.Errorf("Error decoding indexes: invalid size")
+	}
+
+	size += n
+	for i := 0; i < int(count); i++ {
+		_, n := binary.Varint(bytes[total:])
+
+		if n <= 0 {
+			return 0, fmt.Errorf("Error decoding indexes: invalid size")
+		}
+		size += n
+	}
+	return size, nil
 }
 
 func getMessageIndexes(desc *desc.FileDescriptor, name string) []int {
@@ -66,4 +87,41 @@ func Serialize(msg proto.Message) ([]byte, error) {
 	recordValue = append(recordValue, msgIdxBytes...)
 	recordValue = append(recordValue, value...)
 	return recordValue, nil
+}
+
+func Deserialize(data []byte, msg proto.Message) (int, error) {
+
+	// Check message includes at least the magic byte and the schema id
+	if len(data) < 5 {
+		return 0, fmt.Errorf("Error on deserialization: invalid data to parse")
+	}
+
+	// Check Migic Byte
+	if data[0] != MagicByte {
+		return 0, fmt.Errorf("Error on deserialization: invalid magic byte '%d, must be '%d'", data[0], MagicByte)
+	}
+	data = data[1:]
+
+	// Get schemaID
+	schemaID := int(binary.BigEndian.Uint32(data[:4]))
+	data = data[4:]
+
+	// Get and parse message
+	var (
+		idxBytes int
+		err      error
+	)
+
+	// Get index size
+	if idxBytes, err = byteArrayToIndexesSize(data); err != nil {
+		return 0, fmt.Errorf("Error on deserialization: parsing indexes", err)
+	}
+
+	data = data[idxBytes:]
+
+	if err := proto.Unmarshal(data, msg); err != nil {
+		return 0, fmt.Errorf("Error on deserialization:", err)
+	}
+
+	return schemaID, nil
 }
