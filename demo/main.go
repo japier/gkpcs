@@ -17,7 +17,7 @@ func main() {
 
 	sm2 := &example.SimpleMessage{}
 
-	if err := gkpcs.Deserialize(dataBytes, sm2); err != nil {
+	if _, err := gkpcs.Deserialize(dataBytes, sm2); err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(sm2.Text)

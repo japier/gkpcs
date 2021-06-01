@@ -33,7 +33,7 @@ func byteArrayToIndexesSize(bytes []byte) (int, error) {
 
 	size += n
 	for i := 0; i < int(count); i++ {
-		_, n := binary.Varint(bytes[total:])
+		_, n := binary.Varint(bytes[size:])
 
 		if n <= 0 {
 			return 0, fmt.Errorf("Error decoding indexes: invalid size")
@@ -73,8 +73,7 @@ func Serialize(msg proto.Message) ([]byte, error) {
 
 	msgDesc, err := desc.LoadMessageDescriptorForMessage(msg)
 	if err != nil {
-		fmt.Errorf("Error loading message descriptor: %w", err)
-		return nil, err
+		return nil, fmt.Errorf("Error loading message descriptor: %w", err)
 	}
 
 	fileDesc := msgDesc.GetFile()
@@ -114,13 +113,13 @@ func Deserialize(data []byte, msg proto.Message) (int, error) {
 
 	// Get index size
 	if idxBytes, err = byteArrayToIndexesSize(data); err != nil {
-		return 0, fmt.Errorf("Error on deserialization: parsing indexes", err)
+		return 0, fmt.Errorf("Error on deserialization: parsing indexes %w", err)
 	}
 
 	data = data[idxBytes:]
 
 	if err := proto.Unmarshal(data, msg); err != nil {
-		return 0, fmt.Errorf("Error on deserialization:", err)
+		return 0, fmt.Errorf("Error on deserialization: %w", err)
 	}
 
 	return schemaID, nil
